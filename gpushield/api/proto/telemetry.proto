@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package gpushield.telemetry.v1;
+
+option go_package = "github.com/ShipKode/gpushield/api/proto/telemetry";
+
+import "google/protobuf/timestamp.proto";
+
+// TelemetryData represents a collection of metrics from a GPU node
+message TelemetryData {
+  // Metadata about the collection
+  google.protobuf.Timestamp timestamp = 1;
+  string node_id = 2;
+  string hostname = 3;
+  string sensor_version = 4;
+  
+  // GPU metrics
+  repeated GPUMetrics gpu_metrics = 5;
+  
+  // System-level metrics
+  SystemMetrics system_metrics = 6;
+  
+  // Security-related metrics
+  SecurityMetrics security_metrics = 7;
+}
+
+// GPUMetrics contains metrics for a single GPU device
+message GPUMetrics {
+  // Device identification
+  uint32 device_id = 1;
+  string device_name = 2;
+  string uuid = 3;
+  string pci_bus_id = 4;
+  
+  // Memory metrics
+  MemoryMetrics memory = 5;
+  
+  // Utilization metrics
+  UtilizationMetrics utilization = 6;
+  
+  // Temperature and power
+  ThermalMetrics thermal = 7;
+  PowerMetrics power = 8;
+  
+  // Process information
+  repeated ProcessMetrics processes = 9;
+  
+  // Performance metrics
+  PerformanceMetrics performance = 10;
+}
+
+// MemoryMetrics represents GPU memory usage
+message MemoryMetrics {
+  uint64 total_bytes = 1;
+  uint64 used_bytes = 2;
+  uint64 free_bytes = 3;
+  double utilization_percent = 4;
+  
+  // Memory bandwidth
+  uint64 memory_clock_mhz = 5;
+  uint64 memory_bandwidth_gbps = 6;
+}
+
+// UtilizationMetrics represents GPU compute utilization
+message UtilizationMetrics {
+  double gpu_percent = 1;
+  double memory_percent = 2;
+  double encoder_percent = 3;
+  double decoder_percent = 4;
+}
+
+// ThermalMetrics represents temperature information
+message ThermalMetrics {
+  double gpu_temp_celsius = 1;
+  double memory_temp_celsius = 2;
+  double max_operating_temp_celsius = 3;
+  double slowdown_temp_celsius = 4;
+  double shutdown_temp_celsius = 5;
+}
+
+// PowerMetrics represents power consumption
+message PowerMetrics {
+  double power_draw_watts = 1;
+  double power_limit_watts = 2;
+  double default_power_limit_watts = 3;
+  double enforced_power_limit_watts = 4;
+  double min_power_limit_watts = 5;
+  double max_power_limit_watts = 6;
+}
+
+// ProcessMetrics represents information about processes using the GPU
+message ProcessMetrics {
+  uint32 pid = 1;
+  string name = 2;
+  uint64 memory_used_bytes = 3;
+  string type = 4; // "C" for compute, "G" for graphics, "C+G" for both
+  uint32 sm_utilization_percent = 5;
+  uint32 memory_utilization_percent = 6;
+  uint32 encoder_utilization_percent = 7;
+  uint32 decoder_utilization_percent = 8;
+}
+
+// PerformanceMetrics represents GPU performance counters
+message PerformanceMetrics {
+  uint32 graphics_clock_mhz = 1;
+  uint32 sm_clock_mhz = 2;
+  uint32 memory_clock_mhz = 3;
+  uint32 video_clock_mhz = 4;
+  
+  // Performance states
+  uint32 performance_state = 5; // P-state (0-15)
+  uint32 clock_throttle_reasons = 6; // Bitmask of throttle reasons
+}
+
+// SystemMetrics represents system-level information
+message SystemMetrics {
+  string driver_version = 1;
+  string cuda_version = 2;
+  uint32 gpu_count = 3;
+  
+  // System resources
+  double cpu_utilization_percent = 4;
+  uint64 system_memory_total_bytes = 5;
+  uint64 system_memory_used_bytes = 6;
+  
+  // Network and storage
+  repeated NetworkInterface network_interfaces = 7;
+  repeated StorageDevice storage_devices = 8;
+}
+
+// NetworkInterface represents network interface metrics
+message NetworkInterface {
+  string name = 1;
+  uint64 bytes_sent = 2;
+  uint64 bytes_received = 3;
+  uint64 packets_sent = 4;
+  uint64 packets_received = 5;
+  uint64 errors_in = 6;
+  uint64 errors_out = 7;
+  uint64 drops_in = 8;
+  uint64 drops_out = 9;
+}
+
+// StorageDevice represents storage device metrics
+message StorageDevice {
+  string device = 1;
+  string mountpoint = 2;
+  uint64 total_bytes = 3;
+  uint64 used_bytes = 4;
+  uint64 free_bytes = 5;
+  double utilization_percent = 6;
+}
+
+// SecurityMetrics represents security-related metrics
+message SecurityMetrics {
+  // Integrity measurements
+  repeated IntegrityMeasurement integrity_measurements = 1;
+  
+  // Anomaly detection
+  repeated AnomalyEvent anomaly_events = 2;
+  
+  // Access control
+  repeated AccessEvent access_events = 3;
+}
+
+// IntegrityMeasurement represents a security integrity measurement
+message IntegrityMeasurement {
+  string component = 1; // "driver", "firmware", "kernel_module", etc.
+  string hash_algorithm = 2; // "sha256", "sha512", etc.
+  string hash_value = 3;
+  google.protobuf.Timestamp measured_at = 4;
+  bool is_trusted = 5;
+}
+
+// AnomalyEvent represents a detected anomaly
+message AnomalyEvent {
+  string event_type = 1; // "unusual_memory_pattern", "unexpected_process", etc.
+  string description = 2;
+  double confidence_score = 3; // 0.0 to 1.0
+  google.protobuf.Timestamp detected_at = 4;
+  map<string, string> metadata = 5;
+}
+
+// AccessEvent represents a GPU access event
+message AccessEvent {
+  string event_type = 1; // "process_start", "memory_allocation", "kernel_launch", etc.
+  uint32 pid = 2;
+  string process_name = 3;
+  string user = 4;
+  google.protobuf.Timestamp timestamp = 5;
+  map<string, string> details = 6;
+}
+
+// TelemetryService defines the gRPC service for telemetry data
+service TelemetryService {
+  // Stream telemetry data from sensors
+  rpc StreamTelemetry(stream TelemetryData) returns (stream TelemetryResponse);
+  
+  // Get current metrics for a specific node
+  rpc GetNodeMetrics(GetNodeMetricsRequest) returns (TelemetryData);
+  
+  // Get historical metrics
+  rpc GetHistoricalMetrics(GetHistoricalMetricsRequest) returns (stream TelemetryData);
+}
+
+// TelemetryResponse represents a response to telemetry data
+message TelemetryResponse {
+  bool success = 1;
+  string message = 2;
+  google.protobuf.Timestamp processed_at = 3;
+}
+
+// GetNodeMetricsRequest represents a request for current node metrics
+message GetNodeMetricsRequest {
+  string node_id = 1;
+  repeated string metric_types = 2; // Optional filter for specific metric types
+}
+
+// GetHistoricalMetricsRequest represents a request for historical metrics
+message GetHistoricalMetricsRequest {
+  string node_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  repeated string metric_types = 4; // Optional filter for specific metric types
+  uint32 limit = 5; // Optional limit on number of results
+}

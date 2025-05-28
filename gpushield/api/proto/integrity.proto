@@ -1,0 +1,307 @@
+syntax = "proto3";
+
+package gpushield.integrity.v1;
+
+option go_package = "github.com/ShipKode/gpushield/api/proto/integrity";
+
+import "google/protobuf/timestamp.proto";
+
+// IntegrityReport represents a comprehensive integrity assessment
+message IntegrityReport {
+  // Metadata
+  google.protobuf.Timestamp timestamp = 1;
+  string node_id = 2;
+  string hostname = 3;
+  string report_id = 4;
+  
+  // Overall integrity status
+  IntegrityStatus overall_status = 5;
+  
+  // Component-specific integrity checks
+  repeated ComponentIntegrity components = 6;
+  
+  // Attestation data
+  AttestationData attestation = 7;
+  
+  // Security events
+  repeated SecurityEvent security_events = 8;
+}
+
+// IntegrityStatus represents the overall integrity state
+enum IntegrityStatus {
+  INTEGRITY_STATUS_UNKNOWN = 0;
+  INTEGRITY_STATUS_TRUSTED = 1;
+  INTEGRITY_STATUS_COMPROMISED = 2;
+  INTEGRITY_STATUS_SUSPICIOUS = 3;
+  INTEGRITY_STATUS_ERROR = 4;
+}
+
+// ComponentIntegrity represents integrity data for a specific component
+message ComponentIntegrity {
+  string component_name = 1; // "nvidia_driver", "cuda_runtime", "kernel_module", etc.
+  string component_version = 2;
+  ComponentType component_type = 3;
+  IntegrityStatus status = 4;
+  
+  // Hash-based integrity
+  repeated HashMeasurement hash_measurements = 5;
+  
+  // Signature verification
+  SignatureVerification signature_verification = 6;
+  
+  // Runtime integrity
+  RuntimeIntegrity runtime_integrity = 7;
+  
+  // Additional metadata
+  map<string, string> metadata = 8;
+}
+
+// ComponentType categorizes different types of components
+enum ComponentType {
+  COMPONENT_TYPE_UNKNOWN = 0;
+  COMPONENT_TYPE_DRIVER = 1;
+  COMPONENT_TYPE_FIRMWARE = 2;
+  COMPONENT_TYPE_KERNEL_MODULE = 3;
+  COMPONENT_TYPE_LIBRARY = 4;
+  COMPONENT_TYPE_APPLICATION = 5;
+  COMPONENT_TYPE_CONFIGURATION = 6;
+}
+
+// HashMeasurement represents a cryptographic hash measurement
+message HashMeasurement {
+  string algorithm = 1; // "sha256", "sha512", "blake2b", etc.
+  string hash_value = 2;
+  string file_path = 3;
+  uint64 file_size = 4;
+  google.protobuf.Timestamp measured_at = 5;
+  
+  // Reference hash for comparison
+  string expected_hash = 6;
+  bool hash_matches = 7;
+}
+
+// SignatureVerification represents digital signature verification
+message SignatureVerification {
+  bool is_signed = 1;
+  bool signature_valid = 2;
+  string signer = 3;
+  string certificate_chain = 4;
+  google.protobuf.Timestamp signature_timestamp = 5;
+  string signature_algorithm = 6;
+  repeated string trust_anchors = 7;
+}
+
+// RuntimeIntegrity represents runtime integrity checks
+message RuntimeIntegrity {
+  // Memory protection
+  MemoryProtection memory_protection = 1;
+  
+  // Control flow integrity
+  ControlFlowIntegrity control_flow_integrity = 2;
+  
+  // API hooking detection
+  repeated APIHook api_hooks = 3;
+  
+  // Process integrity
+  ProcessIntegrity process_integrity = 4;
+}
+
+// MemoryProtection represents memory protection status
+message MemoryProtection {
+  bool nx_bit_enabled = 1;
+  bool aslr_enabled = 2;
+  bool dep_enabled = 3;
+  bool stack_canaries_enabled = 4;
+  repeated MemoryRegion suspicious_regions = 5;
+}
+
+// MemoryRegion represents a memory region of interest
+message MemoryRegion {
+  uint64 start_address = 1;
+  uint64 end_address = 2;
+  string permissions = 3; // "rwx", "r-x", etc.
+  string description = 4;
+  bool is_suspicious = 5;
+}
+
+// ControlFlowIntegrity represents CFI status
+message ControlFlowIntegrity {
+  bool cfi_enabled = 1;
+  bool shadow_stack_enabled = 2;
+  repeated ControlFlowViolation violations = 3;
+}
+
+// ControlFlowViolation represents a CFI violation
+message ControlFlowViolation {
+  uint64 violation_address = 1;
+  string violation_type = 2;
+  google.protobuf.Timestamp detected_at = 3;
+  string description = 4;
+}
+
+// APIHook represents a detected API hook
+message APIHook {
+  string api_name = 1;
+  string module_name = 2;
+  uint64 original_address = 3;
+  uint64 hook_address = 4;
+  string hook_type = 5; // "inline", "iat", "eat", etc.
+  bool is_malicious = 6;
+  string description = 7;
+}
+
+// ProcessIntegrity represents process-level integrity
+message ProcessIntegrity {
+  uint32 pid = 1;
+  string process_name = 2;
+  string executable_path = 3;
+  bool is_trusted = 4;
+  repeated string loaded_modules = 5;
+  repeated string suspicious_behaviors = 6;
+}
+
+// AttestationData represents TPM/hardware attestation data
+message AttestationData {
+  // TPM attestation
+  TPMAttestation tpm_attestation = 1;
+  
+  // Secure boot status
+  SecureBootStatus secure_boot = 2;
+  
+  // Hardware security features
+  HardwareSecurityFeatures hardware_features = 3;
+}
+
+// TPMAttestation represents TPM-based attestation
+message TPMAttestation {
+  bool tpm_present = 1;
+  string tpm_version = 2;
+  repeated PCRMeasurement pcr_measurements = 3;
+  string attestation_key_digest = 4;
+  bytes quote = 5;
+  bytes signature = 6;
+}
+
+// PCRMeasurement represents a Platform Configuration Register measurement
+message PCRMeasurement {
+  uint32 pcr_index = 1;
+  string algorithm = 2;
+  bytes value = 3;
+  string description = 4;
+}
+
+// SecureBootStatus represents secure boot configuration
+message SecureBootStatus {
+  bool secure_boot_enabled = 1;
+  bool setup_mode = 2;
+  repeated string trusted_certificates = 3;
+  repeated string forbidden_signatures = 4;
+}
+
+// HardwareSecurityFeatures represents hardware security capabilities
+message HardwareSecurityFeatures {
+  bool intel_txt_enabled = 1;
+  bool amd_svm_enabled = 2;
+  bool iommu_enabled = 3;
+  bool smep_enabled = 4;
+  bool smap_enabled = 5;
+  bool cet_enabled = 6;
+  repeated string additional_features = 7;
+}
+
+// SecurityEvent represents a security-related event
+message SecurityEvent {
+  string event_id = 1;
+  SecurityEventType event_type = 2;
+  SecurityEventSeverity severity = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  string description = 5;
+  map<string, string> details = 6;
+  
+  // Source information
+  string source_component = 7;
+  string source_node = 8;
+  
+  // Remediation
+  repeated string recommended_actions = 9;
+}
+
+// SecurityEventType categorizes security events
+enum SecurityEventType {
+  SECURITY_EVENT_TYPE_UNKNOWN = 0;
+  SECURITY_EVENT_TYPE_INTEGRITY_VIOLATION = 1;
+  SECURITY_EVENT_TYPE_UNAUTHORIZED_ACCESS = 2;
+  SECURITY_EVENT_TYPE_MALWARE_DETECTION = 3;
+  SECURITY_EVENT_TYPE_ANOMALOUS_BEHAVIOR = 4;
+  SECURITY_EVENT_TYPE_CONFIGURATION_CHANGE = 5;
+  SECURITY_EVENT_TYPE_PRIVILEGE_ESCALATION = 6;
+  SECURITY_EVENT_TYPE_DATA_EXFILTRATION = 7;
+}
+
+// SecurityEventSeverity represents the severity of a security event
+enum SecurityEventSeverity {
+  SECURITY_EVENT_SEVERITY_UNKNOWN = 0;
+  SECURITY_EVENT_SEVERITY_INFO = 1;
+  SECURITY_EVENT_SEVERITY_LOW = 2;
+  SECURITY_EVENT_SEVERITY_MEDIUM = 3;
+  SECURITY_EVENT_SEVERITY_HIGH = 4;
+  SECURITY_EVENT_SEVERITY_CRITICAL = 5;
+}
+
+// IntegrityService defines the gRPC service for integrity operations
+service IntegrityService {
+  // Perform integrity check on a node
+  rpc PerformIntegrityCheck(IntegrityCheckRequest) returns (IntegrityReport);
+  
+  // Stream integrity reports
+  rpc StreamIntegrityReports(stream IntegrityReport) returns (stream IntegrityResponse);
+  
+  // Get integrity status for a node
+  rpc GetIntegrityStatus(GetIntegrityStatusRequest) returns (IntegrityStatusResponse);
+  
+  // Update trusted baselines
+  rpc UpdateTrustedBaseline(UpdateTrustedBaselineRequest) returns (UpdateTrustedBaselineResponse);
+}
+
+// IntegrityCheckRequest represents a request to perform integrity check
+message IntegrityCheckRequest {
+  string node_id = 1;
+  repeated string components = 2; // Optional filter for specific components
+  bool include_attestation = 3;
+  bool deep_scan = 4;
+}
+
+// IntegrityResponse represents a response to integrity data
+message IntegrityResponse {
+  bool success = 1;
+  string message = 2;
+  google.protobuf.Timestamp processed_at = 3;
+}
+
+// GetIntegrityStatusRequest represents a request for integrity status
+message GetIntegrityStatusRequest {
+  string node_id = 1;
+  repeated string components = 2; // Optional filter
+}
+
+// IntegrityStatusResponse represents the current integrity status
+message IntegrityStatusResponse {
+  IntegrityStatus overall_status = 1;
+  repeated ComponentIntegrity components = 2;
+  google.protobuf.Timestamp last_check = 3;
+}
+
+// UpdateTrustedBaselineRequest represents a request to update trusted baselines
+message UpdateTrustedBaselineRequest {
+  string component_name = 1;
+  string component_version = 2;
+  repeated HashMeasurement trusted_hashes = 3;
+  SignatureVerification signature_requirements = 4;
+}
+
+// UpdateTrustedBaselineResponse represents the response to baseline update
+message UpdateTrustedBaselineResponse {
+  bool success = 1;
+  string message = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}

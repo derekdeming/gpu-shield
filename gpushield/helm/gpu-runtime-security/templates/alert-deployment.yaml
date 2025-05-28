@@ -1,0 +1,84 @@
+{{- if .Values.alertEngine.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gpu-runtime-security.fullname" . }}-alert
+  labels:
+    {{- include "gpu-runtime-security.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alert
+spec:
+  replicas: {{ .Values.alertEngine.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gpu-runtime-security.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: alert
+  template:
+    metadata:
+      labels:
+        {{- include "gpu-runtime-security.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: alert
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "gpu-runtime-security.serviceAccountName" . }}
+      containers:
+      - name: alert
+        image: "{{ .Values.global.imageRegistry }}{{ .Values.alertEngine.image.repository }}:{{ .Values.alertEngine.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.alertEngine.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+        - name: metrics
+          containerPort: 9091
+          protocol: TCP
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        {{- with .Values.alertEngine.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        args:
+        - --port=8081
+        - --metrics-port=9091
+        - --log-level={{ .Values.alertEngine.logLevel | default "info" }}
+        - --backend-url={{ .Values.alertEngine.backendURL | default "http://backend:8000" }}
+        - --processing-interval={{ .Values.alertEngine.processingInterval | default "10s" }}
+        - --anomaly-threshold={{ .Values.alertEngine.anomalyThreshold | default 0.7 }}
+        - --critical-threshold={{ .Values.alertEngine.criticalThreshold | default 0.9 }}
+        - --max-alerts-per-minute={{ .Values.alertEngine.maxAlertsPerMinute | default 10 }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.alertEngine.resources | nindent 10 }}
+      {{- with .Values.alertEngine.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.alertEngine.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.alertEngine.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }} 

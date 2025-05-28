@@ -1,0 +1,52 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "gpu-runtime-security.clusterRoleName" . }}
+  labels:
+    {{- include "gpu-runtime-security.labels" . | nindent 4 }}
+rules:
+# Node access for GPU information
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+# Pod access for process monitoring
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+# Events for security alerts
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+# ConfigMaps for configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+# Secrets for sensitive configuration
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+# Metrics access
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+# Custom resources for GPU metrics
+- apiGroups: ["gpushield.io"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "gpu-runtime-security.clusterRoleBindingName" . }}
+  labels:
+    {{- include "gpu-runtime-security.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "gpu-runtime-security.clusterRoleName" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "gpu-runtime-security.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+{{- end }} 

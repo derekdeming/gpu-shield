@@ -1,0 +1,20 @@
+apiVersion: v2
+name: gpu-runtime-security
+description: A Helm chart for GPU Shield runtime security monitoring
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - gpu
+  - security
+  - monitoring
+  - nvidia
+  - runtime
+home: https://github.com/ShipKode/gpushield
+sources:
+  - https://github.com/ShipKode/gpushield
+maintainers:
+  - name: GPU Shield Team
+    email: team@gpushield.io
+annotations:
+  category: Security 

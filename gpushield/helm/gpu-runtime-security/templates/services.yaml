@@ -1,0 +1,47 @@
+{{- if .Values.collector.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gpu-runtime-security.fullname" . }}-collector
+  labels:
+    {{- include "gpu-runtime-security.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+spec:
+  type: {{ .Values.collector.service.type }}
+  ports:
+    - port: {{ .Values.collector.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 9090
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "gpu-runtime-security.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+---
+{{- end }}
+{{- if .Values.alertEngine.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gpu-runtime-security.fullname" . }}-alert
+  labels:
+    {{- include "gpu-runtime-security.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alert
+spec:
+  type: {{ .Values.alertEngine.service.type }}
+  ports:
+    - port: {{ .Values.alertEngine.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 9091
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "gpu-runtime-security.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: alert
+{{- end }} 

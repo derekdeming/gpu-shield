@@ -1,0 +1,52 @@
+FROM golang:1.24.3-alpine AS builder
+
+RUN apk add --no-cache \
+    git \
+    make \
+    protobuf \
+    protobuf-dev
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY . .
+
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+RUN make proto-go # generate protobuf stubs for Go
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sensor ./cmd/sensor # build the sensor binary
+
+FROM alpine:3.18
+
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata
+
+# create non-root user (though sensor runs as root in privileged mode)
+RUN addgroup -g 1000 gpushield && \
+    adduser -D -s /bin/sh -u 1000 -G gpushield gpushield
+
+# copy the binary from builder stage
+COPY --from=builder /app/sensor /usr/local/bin/sensor
+
+# make binary executable
+RUN chmod +x /usr/local/bin/sensor
+
+# metadata
+LABEL org.opencontainers.image.title="GPU Shield Sensor"
+LABEL org.opencontainers.image.description="GPU runtime security monitoring sensor"
+LABEL org.opencontainers.image.vendor="GPU Shield"
+LABEL org.opencontainers.image.version="0.1.0"
+
+# Default user (will be overridden in privileged mode)
+USER gpushield
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD /usr/local/bin/sensor --help || exit 1
+
+ENTRYPOINT ["/usr/local/bin/sensor"]
+CMD ["--interval=30s", "--log-level=info", "--output=json"] 

@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "DCGM Diagnostic": {
+      "type": "object",
+      "properties": {
+        "test_categories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "tests": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "entity_group": {
+                            "type": "string"
+                          },
+                          "entity_group_id": {
+                            "type": "integer"
+                          },
+                          "entity_id": {
+                            "type": "integer"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "warnings": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "error_category": {
+                                  "type": "integer"
+                                },
+                                "error_id": {
+                                  "type": "integer"
+                                },
+                                "error_severity": {
+                                  "type": "integer"
+                                },
+                                "warning": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "error_category",
+                                "error_id",
+                                "error_severity",
+                                "warning"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "entity_group",
+                          "entity_group_id",
+                          "entity_id",
+                          "status"
+                        ]
+                      }
+                    },
+                    "test_summary": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "results",
+                    "test_summary"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "category",
+              "tests"
+            ]
+          }
+        },
+        "runtime_error": {
+          "type": "string"
+        }
+      }
+    },
+    "entity_groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "device_id": {
+                  "type": "string"
+                },
+                "entity_id": {
+                  "type": "integer"
+                },
+                "serial_num": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "device_id",
+                "entity_id"
+              ]
+            }
+          },
+          "entity_group": {
+            "type": "string"
+          },
+          "entity_group_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entities",
+          "entity_group",
+          "entity_group_id"
+        ]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "Driver Version Detected": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "EUD Test Version": {
+          "type": "string"
+        },
+        "CPU EUD Test Version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ]
+    }
+  },
+  "required": [
+    "DCGM Diagnostic"
+  ]
+}

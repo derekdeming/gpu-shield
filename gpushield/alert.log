@@ -1,0 +1,8 @@
+{"anomaly_threshold":0.7,"backend_url":"http://localhost:8000","critical_threshold":0.9,"level":"info","msg":"Starting GPU Shield alert engine","port":8090,"processing_interval":30000000000,"time":"2025-05-25T19:08:51-04:00","version":"0.1.0"}
+{"level":"info","msg":"Starting HTTP server","port":8090,"time":"2025-05-25T19:08:51-04:00"}
+{"level":"info","msg":"Starting metrics server","port":9091,"time":"2025-05-25T19:08:51-04:00"}
+{"level":"info","msg":"Manual processing triggered","time":"2025-05-25T19:09:08-04:00"}
+{"error":"failed to fetch security events: Get \"http://localhost:8000/api/v1/security-events?since=2025-05-25T19:04:08-04:00\u0026limit=100\": dial tcp [::1]:8000: connect: connection refused","level":"error","msg":"Failed to process security events","time":"2025-05-25T19:09:08-04:00"}
+{"error":"failed to query telemetry: Post \"http://localhost:8000/api/v1/telemetry/query\": dial tcp [::1]:8000: connect: connection refused","level":"error","msg":"Failed to process telemetry anomalies","time":"2025-05-25T19:09:08-04:00"}
+{"level":"info","msg":"Received shutdown signal","signal":15,"time":"2025-05-25T19:09:18-04:00"}
+{"level":"info","msg":"Shutting down alert engine","time":"2025-05-25T19:09:18-04:00"}

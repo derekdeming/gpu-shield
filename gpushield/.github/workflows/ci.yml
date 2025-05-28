@@ -1,0 +1,323 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  GO_VERSION: '1.24.3'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Go linting and testing
+  go-quality:
+    name: Go Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: |
+        cd gpushield
+        go mod download
+        go mod tidy
+
+    - name: Install protoc
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Generate protobuf stubs
+      run: |
+        cd gpushield
+        make proto-go
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        working-directory: gpushield
+        args: --timeout=5m
+
+    - name: Run Go tests
+      run: |
+        cd gpushield
+        go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Upload Go coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./gpushield/coverage.out
+        flags: golang
+
+  # Python linting and testing
+  python-quality:
+    name: Python Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache Python packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort pytest pytest-cov
+        pip install grpcio-tools protobuf
+        if [ -f gpushield/python/requirements.txt ]; then
+          pip install -r gpushield/python/requirements.txt
+        fi
+
+    - name: Install protoc
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
+
+    - name: Generate Python protobuf stubs
+      run: |
+        cd gpushield
+        make proto-python
+
+    - name: Run Python linting
+      run: |
+        cd gpushield
+        python -m flake8 python/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        python -m flake8 python/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Check Python formatting
+      run: |
+        cd gpushield
+        python -m black --check python/
+        python -m isort --check-only python/
+
+    - name: Run Python tests
+      run: |
+        cd gpushield
+        if [ -d python/tests ]; then
+          python -m pytest python/tests/ -v --cov=python/ --cov-report=xml
+        else
+          echo "No Python tests found, skipping"
+        fi
+
+    - name: Upload Python coverage to Codecov
+      if: success()
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./gpushield/coverage.xml
+        flags: python
+
+  # Security and SBOM scanning
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Install Syft
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+    - name: Install Grype
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+    - name: Install Gosec
+      run: |
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
+    - name: Generate SBOM with Syft
+      run: |
+        cd gpushield
+        syft . -o spdx-json=sbom.json
+        syft . -o table=sbom.txt
+
+    - name: Upload SBOM artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: sbom-reports
+        path: |
+          gpushield/sbom.json
+          gpushield/sbom.txt
+
+    - name: Run vulnerability scan with Grype
+      run: |
+        cd gpushield
+        grype . -o json > vulnerability-report.json
+        grype . -o table > vulnerability-report.txt
+
+    - name: Upload vulnerability reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: vulnerability-reports
+        path: |
+          gpushield/vulnerability-report.json
+          gpushield/vulnerability-report.txt
+
+    - name: Run Gosec security scan
+      run: |
+        cd gpushield
+        gosec -fmt json -out gosec-report.json ./...
+        gosec -fmt text -out gosec-report.txt ./...
+
+    - name: Upload Gosec reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: gosec-reports
+        path: |
+          gpushield/gosec-report.json
+          gpushield/gosec-report.txt
+
+  # Build and test
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: [go-quality, python-quality]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Install protoc
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Build binaries
+      run: |
+        cd gpushield
+        make build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: binaries
+        path: gpushield/bin/
+
+    - name: Test sensor binary
+      run: |
+        cd gpushield
+        ./bin/sensor --help
+
+  # Docker build (only on main branch)
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [build, security-scan]
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}/sensor
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: gpushield
+        file: gpushield/docker/Dockerfile.sensor
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Helm chart validation
+  helm-validation:
+    name: Helm Chart Validation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: 'latest'
+
+    - name: Lint Helm chart
+      run: |
+        cd gpushield
+        helm lint helm/gpu-runtime-security
+
+    - name: Template Helm chart
+      run: |
+        cd gpushield
+        helm template test-release helm/gpu-runtime-security > helm-output.yaml
+
+    - name: Upload Helm template output
+      uses: actions/upload-artifact@v3
+      with:
+        name: helm-template
+        path: gpushield/helm-output.yaml

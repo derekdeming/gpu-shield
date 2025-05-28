@@ -1,0 +1,57 @@
+FROM golang:1.24.3-alpine AS builder
+
+RUN apk add --no-cache \
+    git \
+    make \
+    protobuf \
+    protobuf-dev
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+RUN make proto-go
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o collector ./cmd/collector
+
+FROM alpine:3.18
+
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl
+
+# Create non-root user
+RUN addgroup -g 1000 gpushield && \
+    adduser -D -s /bin/sh -u 1000 -G gpushield gpushield
+
+# Copy the binary from builder stage
+COPY --from=builder /app/collector /usr/local/bin/collector
+
+# Make binary executable
+RUN chmod +x /usr/local/bin/collector
+
+# Metadata
+LABEL org.opencontainers.image.title="GPU Shield Collector"
+LABEL org.opencontainers.image.description="GPU telemetry collection and aggregation service"
+LABEL org.opencontainers.image.vendor="GPU Shield"
+LABEL org.opencontainers.image.version="0.1.0"
+
+# Default user
+USER gpushield
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Expose ports
+EXPOSE 8080 9090
+
+ENTRYPOINT ["/usr/local/bin/collector"]
+CMD ["--port=8080", "--metrics-port=9090", "--log-level=info"] 

@@ -1,0 +1,9 @@
+[submodule "third_party/nvidia-dcgm"]
+	path = third_party/nvidia-dcgm
+	url = https://github.com/NVIDIA/DCGM.git
+[submodule "third_party/rocprofiler-compute"]
+	path = third_party/rocprofiler-compute
+	url = https://github.com/ROCm/rocprofiler-compute
+[submodule "third_party/dynolog"]
+	path = third_party/dynolog
+	url = https://github.com/facebookincubator/dynolog

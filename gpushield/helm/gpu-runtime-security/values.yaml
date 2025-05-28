@@ -1,0 +1,135 @@
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+sensor:
+  enabled: true
+  image:
+    repository: gpushield/sensor
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  interval: 30 # collection interval (seconds)
+  logLevel: info # log level (debug, info, warn, error)
+  outputFormat: json # output format (json, text)
+  useDCGM: false # use DCGM instead of nvidia-smi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  nodeSelector: # node selector for GPU nodes
+    accelerator: nvidia
+  tolerations: # tolerations for GPU nodes
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  securityContext: # security context
+    privileged: true
+    runAsUser: 0
+    runAsGroup: 0
+  env: []
+  extraVolumeMounts: []
+  extraVolumes: []
+
+collector:
+  enabled: true
+  image:
+    repository: gpushield/collector
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  logLevel: info
+  backendURL: "http://backend:8000"
+  bufferSize: 1000
+  flushInterval: "30s"
+  env: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+alertEngine:
+  enabled: true
+  image:
+    repository: gpushield/alert
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  logLevel: info
+  backendURL: "http://backend:8000"
+  processingInterval: "10s"
+  anomalyThreshold: 0.7
+  criticalThreshold: 0.9
+  maxAlertsPerMinute: 10
+  env: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# NVIDIA device plugin configuration
+nvidiaDevicePlugin:
+  enabled: true
+serviceAccount:
+  create: true # specifies whether a service account should be created
+  annotations: {} # annotations to add to the service account
+  name: "" # the name of the service account to use. If not set and create is true, a name is generated using the fullname template
+
+# pod and networksecurity policy
+podSecurityPolicy:
+  enabled: false
+networkPolicy:
+  enabled: false
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+    path: /metrics
+  grafana:
+    enabled: true
+    dashboards:
+      - gpu-overview
+      - security-events
+      - performance-metrics
+
+storage:
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+rbac:
+  create: true
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+autoscaling: # horizontal pod autoscaler
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80 

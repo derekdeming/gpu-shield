@@ -1,0 +1,7 @@
+{"backend_url":"http://localhost:8000","buffer_size":10,"flush_interval":5000000000,"level":"info","msg":"Starting GPU Shield collector","port":8080,"time":"2025-05-25T19:07:37-04:00","version":"0.1.0"}
+{"level":"info","msg":"Starting HTTP server","port":8080,"time":"2025-05-25T19:07:37-04:00"}
+{"level":"info","msg":"Starting metrics server","port":9090,"time":"2025-05-25T19:07:37-04:00"}
+{"batch_size":1,"level":"info","msg":"Flushing telemetry batch to backend","time":"2025-05-25T19:08:12-04:00"}
+{"error":"failed to send request: Post \"http://localhost:8000/api/v1/telemetry/records/bulk\": dial tcp [::1]:8000: connect: connection refused","level":"error","msg":"Failed to send telemetry to backend","time":"2025-05-25T19:08:12-04:00"}
+{"level":"info","msg":"Received shutdown signal","signal":15,"time":"2025-05-25T19:09:18-04:00"}
+{"level":"info","msg":"Shutting down collector","time":"2025-05-25T19:09:18-04:00"}

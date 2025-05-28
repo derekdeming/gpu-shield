@@ -1,0 +1,57 @@
+FROM golang:1.24.3-alpine AS builder
+
+RUN apk add --no-cache \
+    git \
+    make \
+    protobuf \
+    protobuf-dev
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+RUN make proto-go
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o alert ./cmd/alert
+
+FROM alpine:3.18
+
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl
+
+# Create non-root user
+RUN addgroup -g 1000 gpushield && \
+    adduser -D -s /bin/sh -u 1000 -G gpushield gpushield
+
+# Copy the binary from builder stage
+COPY --from=builder /app/alert /usr/local/bin/alert
+
+# Make binary executable
+RUN chmod +x /usr/local/bin/alert
+
+# Metadata
+LABEL org.opencontainers.image.title="GPU Shield Alert Engine"
+LABEL org.opencontainers.image.description="GPU security alert processing and response engine"
+LABEL org.opencontainers.image.vendor="GPU Shield"
+LABEL org.opencontainers.image.version="0.1.0"
+
+# Default user
+USER gpushield
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8081/health || exit 1
+
+# Expose ports
+EXPOSE 8081 9091
+
+ENTRYPOINT ["/usr/local/bin/alert"]
+CMD ["--port=8081", "--metrics-port=9091", "--log-level=info"] 
